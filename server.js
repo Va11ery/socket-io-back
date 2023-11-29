@@ -2,9 +2,8 @@ const express = require("express");
 const http = require("http");
 const socketIO = require("socket.io");
 const multer = require("multer");
-const fs = require("fs").promises;
 const cors = require("cors");
-const path = require("path");
+const book = require('./book')
 
 const app = express();
 
@@ -12,9 +11,9 @@ const server = http.createServer(app);
 
 app.use(express.json()); // Для разбора JSON из запросов
 app.use(cors());
+app.use('/',book)
 
-const storage = multer.memoryStorage(); // Это сохраняет файл в памяти, вы можете настроить это в зависимости от ваших требований
-const upload = multer({ storage: storage });
+
 
 // Мап для хранения паролей и пользовательских данных
 const passwordMap = new Map();
@@ -35,41 +34,13 @@ const b2Functions = require("./b2"); // Замените на путь к ваш
 
 app.post(`/createFolder`, async (req, res) => {
   if (!req.body.nameFolder) {
-    res.send("Папка не создана на B2 Cloud Storage");
+    res.send("Напишите название папки");
   } else {
     await b2Functions.authorizeB2();
     await b2Functions.createFolderOnB2(req.body.nameFolder);
 
     res.send("Папка создана на B2 Cloud Storage");
   }
-});
-
-app.post("/uploadFile", upload.single("file"), async (req, res) => {
-  const fileBuffer = req.file.buffer;
-  const fileName = req.query.nameFolder;
-  await fs.mkdir(path.join(__dirname, "temp"), { recursive: true });
-
-  // Создаем временный файл и записываем в него содержимое буфера
-  const tempFilePath = path.join(__dirname, "temp", `temp-${Date.now()}.txt`);
-
-  await fs.writeFile(tempFilePath, fileBuffer);
-
-  await b2Functions.authorizeB2();
-  await b2Functions.uploadFileToB2(fileName, tempFilePath);
-
-  // Удаляем временный файл после загрузки
-  await fs.unlink(tempFilePath);
-  res.send("Файл загружен на B2 Cloud Storage");
-});
-
-app.get("/downloadFile", async (req, res) => {
-  await b2Functions.authorizeB2();
-  await b2Functions.downloadFileFromB2(
-    "remoteFolder",
-    "localFile.txt",
-    "downloadedFile.txt"
-  );
-  res.send("Файл скачан с B2 Cloud Storage");
 });
 
 // Определяем маршруты с помощью Express
